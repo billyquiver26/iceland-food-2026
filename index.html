@@ -6,6 +6,8 @@
 <title>Iceland Food Guide — Apr 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"/>
 <style>
   :root {
     --ink: #1a1614;
@@ -116,6 +118,47 @@
   .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(245,240,232,0.7); }
   .footer-note { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: rgba(245,240,232,0.35); line-height: 1.6; }
 
+
+  /* ── OVERVIEW MAP ────────────────────────────────────────────── */
+  .map-hero {
+    position: relative;
+    width: 100%;
+    height: 480px;
+    background: var(--ink);
+  }
+  #overview-map {
+    width: 100%;
+    height: 100%;
+  }
+  .map-hero-badge {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .map-hero-badge span { color: var(--gold); }
+  /* Custom popup */
+  .map-popup { min-width: 180px; }
+  .map-popup-name { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--ink); line-height: 1.2; }
+  .map-popup-meta { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .map-popup-section { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .map-popup-link { display: inline-block; font-size: 11px; font-weight: 500; color: var(--red); text-decoration: none; letter-spacing: 0.04em; }
+  .map-popup-link:hover { text-decoration: underline; }
+  .leaflet-popup-content-wrapper { border-radius: 2px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important; }
+  .leaflet-popup-content { margin: 14px 16px !important; }
+  @media (max-width: 600px) { .map-hero { height: 360px; } }
+
   @media (max-width: 600px) {
     .header, .criteria-bar, .main, .footer { padding-left: 24px; padding-right: 24px; }
     .header-meta { gap: 20px; }
@@ -127,6 +170,10 @@
 </head>
 <body>
 
+<div class="map-hero">
+  <div class="map-hero-badge">Iceland Food Guide &nbsp;·&nbsp; <span>64 restaurants</span> &nbsp;·&nbsp; Tap any pin to open in Maps</div>
+  <div id="overview-map"></div>
+</div>
 <header class="header">
   <div class="header-inner">
     <div class="header-tag">Billy & ER — April 8–13, 2026</div>
@@ -661,8 +708,164 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+  // ── ALL ESTABLISHMENT PINS ────────────────────────────────────
+  var SECTION_COLORS = {
+    'Reykjavík':           '#c0392b',
+    'Golden Circle':       '#b8860b',
+    'Flúðir (Detour)':     '#1a4a2e',
+    'Hvolsvöllur':         '#e67e22',
+    'Corridor':            '#8e44ad',
+    'Skógafoss':           '#2980b9',
+    'Vík':                 '#27ae60',
+    'Reynisfjara':         '#16a085',
+    'Kirkjubæjarklaustur': '#d35400',
+    'Glacier Corridor':    '#2471a3',
+    'Selfoss':             '#c0392b',
+    'Hveragerði':          '#7f8c8d'
+  };
+
+  var PINS = [
+    // REYKJAVÍK
+    {n:"Reykjavík Chips",la:64.1512,lo:-21.9342,st:4.6,rv:"1,743",pid:"ChIJY1FuPsx01kgR_DvjUdlDQs8",sec:"Reykjavík"},
+    {n:"Víkinga Pylsur",la:64.1423,lo:-21.9245,st:4.5,rv:"812",pid:"ChIJFd3oTpR11kgRDrZwrCfKJaI",sec:"Reykjavík"},
+    {n:"Bæjarins Beztu Pylsur",la:64.1510,lo:-21.9316,st:4.4,rv:"8,835",pid:"ChIJu66lMC0L1kgReTpj_Nwsoe4",sec:"Reykjavík"},
+    {n:"Brauð & Co",la:64.1473,lo:-21.9252,st:4.8,rv:"4,564",pid:"ChIJRW_988x01kgR2UA5DL7q8rQ",sec:"Reykjavík"},
+    {n:"Wake and Bake",la:64.1464,lo:-21.9283,st:4.7,rv:"820",pid:"ChIJMSbHo8501kgR8P79owdsjgM",sec:"Reykjavík"},
+    {n:"Sandholt",la:64.1471,lo:-21.9225,st:4.6,rv:"4,169",pid:"ChIJS3A1x8d01kgRQF2oXQG-4qk",sec:"Reykjavík"},
+    {n:"Kaffibrennslan",la:64.1469,lo:-21.9205,st:4.6,rv:"1,098",pid:"ChIJm4Acq8101kgRv1aasH2FvWg",sec:"Reykjavík"},
+    {n:"Café Babalu",la:64.1463,lo:-21.9368,st:4.5,rv:"2,519",pid:"ChIJ8R1y2Mx01kgRbnpq0Hlk-mg",sec:"Reykjavík"},
+    {n:"Mokka Kaffi",la:64.1462,lo:-21.9243,st:4.5,rv:"702",pid:"ChIJv37-Js101kgRRMPa-CFs61I",sec:"Reykjavík"},
+    {n:"BakaBaka",la:64.1482,lo:-21.9413,st:4.4,rv:"1,462",pid:"ChIJ89qUI2oL1kgRpecJ2mxmHU4",sec:"Reykjavík"},
+    {n:"The Laundromat Cafe",la:64.1475,lo:-21.9472,st:4.3,rv:"2,493",pid:"ChIJ3Q-3Fi0L1kgRjgSQ0o4_2Zs",sec:"Reykjavík"},
+    {n:"Icelandic Street Food",la:64.1461,lo:-21.9462,st:4.7,rv:"6,542",pid:"ChIJVxyfYC0L1kgRT5xxsk6z3kg",sec:"Reykjavík"},
+    {n:"Íslenski Barinn",la:64.1472,lo:-21.9445,st:4.7,rv:"4,795",pid:"ChIJqe67j80vgUMRchMvkyi1R7c",sec:"Reykjavík"},
+    {n:"Skál!",la:64.1501,lo:-21.9374,st:4.7,rv:"1,100",pid:"ChIJgZR8ncB11kgRn5KASPfHIkE",sec:"Reykjavík"},
+    {n:"Fjallkonan",la:64.1479,lo:-21.9451,st:4.6,rv:"866",pid:"ChIJZZ057KUL1kgRXxy_yvHunZs",sec:"Reykjavík"},
+    {n:"Kaffivagninn",la:64.1521,lo:-21.9303,st:4.6,rv:"780",pid:"ChIJackWXL4L1kgRNSSvfSXI2hs",sec:"Reykjavík"},
+    {n:"Café Loki",la:64.1414,lo:-21.9241,st:4.5,rv:"6,427",pid:"ChIJCRdisMx01kgRUCG-12-_bE0",sec:"Reykjavík"},
+    {n:"Seabaron",la:64.1518,lo:-21.9333,st:4.5,rv:"4,594",pid:"ChIJtZgHhSwL1kgRHK5Hp4cipEk",sec:"Reykjavík"},
+    {n:"101 Reykjavík Street Food",la:64.1492,lo:-21.9352,st:4.5,rv:"3,408",pid:"ChIJ0wZIeVF11kgRgoGq79olLW4",sec:"Reykjavík"},
+    {n:"KRÓST",la:64.1474,lo:-21.9213,st:4.7,rv:"1,318",pid:"ChIJe_7MNsl01kgRpmzliFDOnhE",sec:"Reykjavík"},
+    {n:"Pósthús Food Hall",la:64.1483,lo:-21.9441,st:4.7,rv:"835",pid:"ChIJO4mR7egL1kgRbQ0k6iE00ks",sec:"Reykjavík"},
+    {n:"Grandi Mathöll",la:64.1531,lo:-21.9524,st:4.5,rv:"826",pid:"ChIJAQAwKCsL1kgRmuabzIemfIQ",sec:"Reykjavík"},
+    {n:"Hlemmur Mathöll",la:64.1471,lo:-21.9203,st:4.5,rv:"566",pid:"ChIJUyPMNsl01kgRP1Xm9hHW2hM",sec:"Reykjavík"},
+    {n:"Le KocK",la:64.1533,lo:-21.9403,st:4.7,rv:"1,277",pid:"ChIJg3leks4L1kgRT7dY3IhSQsQ",sec:"Reykjavík"},
+    {n:"Hamborgarabúlla Tómasar",la:64.1528,lo:-21.9383,st:4.7,rv:"1,119",pid:"ChIJLdjXhiwL1kgRpMNJJWe1QmY",sec:"Reykjavík"},
+    {n:"Lóa Restaurant",la:64.1477,lo:-21.9213,st:4.7,rv:"806",pid:"ChIJ0wgn0GN11kgRtuLPZyntzPI",sec:"Reykjavík"},
+    {n:"Bastard Brew & Food",la:64.1483,lo:-21.9333,st:4.6,rv:"2,367",pid:"ChIJLYld_zR11kgRqjJJ7Gv1ngE",sec:"Reykjavík"},
+    {n:"Vitabar",la:64.1443,lo:-21.9213,st:4.6,rv:"852",pid:"ChIJmelwfMx01kgRP_n41ojkWR8",sec:"Reykjavík"},
+    {n:"Brass Kitchen & Bar",la:64.1468,lo:-21.9233,st:4.6,rv:"676",pid:"ChIJbVEUJcl01kgRb8QcUwa0Hvk",sec:"Reykjavík"},
+    {n:"Króns",la:64.1498,lo:-21.9393,st:4.6,rv:"515",pid:"ChIJ_-dgL_UL1kgRBNn4Hdt0he0",sec:"Reykjavík"},
+    {n:"Reykjavík Pizzeria",la:64.1523,lo:-21.9163,st:4.6,rv:"589",pid:"ChIJN9UumCEL1kgRr95L_Bic-xY",sec:"Reykjavík"},
+    {n:"Flatey Pizza",la:64.1534,lo:-21.9503,st:4.5,rv:"769",pid:"ChIJxd5_sSsL1kgRSC5eU3i-FDE",sec:"Reykjavík"},
+    {n:"Devito's Pizza",la:64.1463,lo:-21.9263,st:4.2,rv:"654",pid:"ChIJu85RJMl01kgRH1WwaO1G_xY",sec:"Reykjavík"},
+    {n:"Himalayan Spice",la:64.1541,lo:-21.9383,st:4.7,rv:"740",pid:"ChIJ05ZGrv4L1kgRyCt0_VqYt3Q",sec:"Reykjavík"},
+    {n:"Valdís",la:64.1536,lo:-21.9513,st:4.5,rv:"923",pid:"ChIJ1S66qysL1kgRrgOQHWST1uw",sec:"Reykjavík"},
+    {n:"Gaeta Gelato",la:64.1469,lo:-21.9443,st:4.5,rv:"518",pid:"ChIJ4-hM6rsL1kgROYXKvPjrgSg",sec:"Reykjavík"},
+    {n:"Eldur og Ís",la:64.1481,lo:-21.9363,st:4.4,rv:"1,305",pid:"ChIJzyLHT8101kgR9wGhtdn6IsI",sec:"Reykjavík"},
+    // GOLDEN CIRCLE
+    {n:"Friðheimar",la:64.1774,lo:-20.4882,st:4.7,rv:"5,210",pid:"ChIJu_eD4_uW1kgRr5VyF_fx5t4",sec:"Golden Circle"},
+    {n:"Efstidalur II",la:64.2421,lo:-20.5512,st:4.7,rv:"2,370",pid:"ChIJq_avi-qZ1kgRQjUnszqbNyc",sec:"Golden Circle"},
+    {n:"Lindin",la:64.1243,lo:-20.7315,st:4.5,rv:"804",pid:"ChIJPU9xDL-a1kgRHcRTFNPRxUA",sec:"Golden Circle"},
+    // FLÚÐIR
+    {n:"Farmers Bistro",la:64.1436,lo:-20.3218,st:4.7,rv:"730",pid:"ChIJKbfCDPCV1kgRVuaevlkqW0U",sec:"Flúðir (Detour)"},
+    {n:"Restaurant Minilik",la:64.1302,lo:-20.3182,st:4.6,rv:"515",pid:"ChIJnSnRyZKV1kgRifO_3kXmcmo",sec:"Flúðir (Detour)"},
+    // HVOLSVÖLLUR
+    {n:"Eldstó Art Cafe",la:63.7523,lo:-20.2285,st:4.7,rv:"1,400",pid:"ChIJ_5kB35_j1kgRpyQOYQrS4_c",sec:"Hvolsvöllur"},
+    {n:"Valhalla Restaurant",la:63.7519,lo:-20.2263,st:4.3,rv:"1,133",pid:"ChIJC5FufXXj1kgRqTX5NwXhqtY",sec:"Hvolsvöllur"},
+    // CORRIDOR
+    {n:"Hygge Restaurant & Bar",la:63.7243,lo:-20.0383,st:4.8,rv:"1,240",pid:"ChIJ9zWPZ-Xk1kgRym1Be42iwJI",sec:"Corridor"},
+    {n:"Faxi Bakery",la:63.5433,lo:-19.6683,st:4.7,rv:"819",pid:"ChIJBW3O4xXj1kgRglD-60I3CO0",sec:"Corridor"},
+    // SKÓGAFOSS
+    {n:"Mia's Country Van",la:63.5322,lo:-19.5113,st:4.9,rv:"1,751",pid:"ChIJ9X0AOFHl1kgRToU1d3clr7k",sec:"Skógafoss"},
+    {n:"Skógafoss Bistro Bar",la:63.5318,lo:-19.5093,st:4.3,rv:"919",pid:"ChIJm4G35Zw710gRtTaHY1wDKd8",sec:"Skógafoss"},
+    // VÍK
+    {n:"SKOOL BEANS",la:63.4197,lo:-19.0103,st:4.9,rv:"1,671",pid:"ChIJ3y4pGslL10gRpvZ4cMJBFSA",sec:"Vík"},
+    {n:"Black Crust Pizzeria",la:63.4193,lo:-19.0083,st:4.7,rv:"3,505",pid:"ChIJhaOKGjZL10gRxhoKOs0D5Lo",sec:"Vík"},
+    {n:"The Soup Company",la:63.4191,lo:-19.0113,st:4.7,rv:"2,997",pid:"ChIJKZG6fNBL10gRjd9zV5zgobk",sec:"Vík"},
+    {n:"Smiðjan Brugghús",la:63.4186,lo:-19.0083,st:4.7,rv:"2,019",pid:"ChIJjwWGFzhK10gRhvpat0pqaKY",sec:"Vík"},
+    {n:"Restaurant Suður-Vík",la:63.4194,lo:-19.0093,st:4.6,rv:"2,752",pid:"ChIJJQyiQEdK10gRPOwOwH4LDGo",sec:"Vík"},
+    {n:"Ströndín Pub",la:63.4189,lo:-19.0103,st:4.5,rv:"1,483",pid:"ChIJudlUgEhK10gR3_e9RLL8au4",sec:"Vík"},
+    {n:"Halldórskaffi",la:63.4196,lo:-19.0073,st:4.4,rv:"1,735",pid:"ChIJ6xIBSzhK10gRt_7InKzuAj4",sec:"Vík"},
+    {n:"Ice Cave Bistro",la:63.4184,lo:-19.0113,st:4.0,rv:"623",pid:"ChIJtylDm0hK10gRgDGJh0Jgk1g",sec:"Vík"},
+    // REYNISFJARA
+    {n:"Black Beach Restaurant",la:63.4033,lo:-19.0443,st:4.2,rv:"1,756",pid:"ChIJZxmuoIBJ10gRKHJ7DRSA5kI",sec:"Reynisfjara"},
+    // KIRKJUBÆJARKLAUSTUR
+    {n:"Systrakaffi",la:63.7903,lo:-18.0533,st:4.5,rv:"1,777",pid:"ChIJjT0lVEXl0EgR2E-HTvkUs3A",sec:"Kirkjubæjarklaustur"},
+    // GLACIER CORRIDOR
+    {n:"Café Vatnajökull",la:63.9853,lo:-16.8923,st:4.9,rv:"871",pid:"ChIJfwoXv0c70EgR9XMw8L6E9EI",sec:"Glacier Corridor"},
+    {n:"Freysnes",la:63.9843,lo:-16.8733,st:4.2,rv:"1,100",pid:"ChIJkUjZSuo20EgRVws0p_7xdzU",sec:"Glacier Corridor"},
+    // SELFOSS
+    {n:"The Old Dairy Food Hall",la:63.9371,lo:-21.0043,st:4.7,rv:"608",pid:"ChIJpdvSDpBf1kgRd0vkcj27rlg",sec:"Selfoss"},
+    {n:"Kaffi Krús",la:63.9375,lo:-21.0005,st:4.6,rv:"2,501",pid:"ChIJi9oGEMxf1kgRO6gySp0LR7A",sec:"Selfoss"},
+    {n:"Ingólfsskáli Viking Restaurant",la:63.9368,lo:-21.0023,st:4.6,rv:"764",pid:"ChIJ8Rn47eZg1kgRoeCt0gT976s",sec:"Selfoss"},
+    // HVERAGERÐI
+    {n:"Ölverk Pizza & Brewery",la:63.9976,lo:-21.1891,st:4.6,rv:"873",pid:"ChIJnUP5Bclm1kgR9z9ZXpqyLqE",sec:"Hveragerði"}
+  ];
+
+  // ── OVERVIEW MAP INIT ──────────────────────────────────────────
+  var overviewMap = L.map('overview-map', {
+    scrollWheelZoom: true,
+    zoomControl: true
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org/copyright">OSM</a>',
+    maxZoom: 19
+  }).addTo(overviewMap);
+
+  var clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 40,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    iconCreateFunction: function(cluster) {
+      var count = cluster.getChildCount();
+      return L.divIcon({
+        html: '<div style="background:#1a1614;color:#f5f0e8;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;font-family:DM Sans,sans-serif;border:2px solid rgba(255,255,255,0.2);">' + count + '</div>',
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+    }
+  });
+
+  var bounds = [];
+
+  PINS.forEach(function(p) {
+    var color = SECTION_COLORS[p.sec] || '#1a1614';
+    var mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.n) + '&query_place_id=' + p.pid;
+
+    var icon = L.divIcon({
+      html: '<div style="width:12px;height:12px;background:' + color + ';border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
+      className: '',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+
+    var marker = L.marker([p.la, p.lo], { icon: icon });
+
+    marker.bindPopup(
+      '<div class="map-popup">' +
+        '<div class="map-popup-section">' + p.sec + '</div>' +
+        '<div class="map-popup-name">' + p.n + '</div>' +
+        '<div class="map-popup-meta">★ ' + p.st + ' &nbsp;·&nbsp; ' + p.rv + ' reviews</div>' +
+        '<a class="map-popup-link" href="' + mapsUrl + '" target="_blank" rel="noopener">Open in Maps ↗</a>' +
+      '</div>',
+      { maxWidth: 220 }
+    );
+
+    clusterGroup.addLayer(marker);
+    bounds.push([p.la, p.lo]);
+  });
+
+  overviewMap.addLayer(clusterGroup);
+  overviewMap.fitBounds(bounds, { padding: [30, 30] });
+
 
   // Full route polyline (outbound + return)
   var R = [
