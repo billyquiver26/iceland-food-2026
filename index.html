@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Iceland Food Guide — Apr 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   :root {
     --ink: #1a1614;
@@ -14,34 +15,16 @@
     --gold: #b8860b;
     --muted: #7a7062;
     --border: #d4c9b0;
+    --detour: #1a4a2e;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--paper);
-    color: var(--ink);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    line-height: 1.6;
-  }
+  body { background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; font-weight: 300; line-height: 1.6; }
 
   /* HEADER */
-  .header {
-    background: var(--ink);
-    color: var(--paper);
-    padding: 60px 40px 50px;
-    position: relative;
-    overflow: hidden;
-  }
-  .header::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px);
-  }
+  .header { background: var(--ink); color: var(--paper); padding: 60px 40px 50px; position: relative; overflow: hidden; }
+  .header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px); }
   .header-inner { max-width: 900px; margin: 0 auto; position: relative; }
-  .header-tag { font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+  .header-tag { font-weight: 500; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
   .header h1 { font-family: 'Playfair Display', serif; font-size: clamp(42px, 7vw, 80px); font-weight: 900; line-height: 0.95; letter-spacing: -2px; margin-bottom: 20px; }
   .header h1 em { font-style: italic; font-weight: 400; color: var(--gold); }
   .header-sub { font-size: 14px; color: rgba(245,240,232,0.6); font-weight: 300; letter-spacing: 0.05em; }
@@ -61,10 +44,30 @@
 
   /* SECTION */
   .section { margin-top: 60px; }
-  .section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+  .section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 0; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+  .section.detour .section-header { border-bottom-color: var(--detour); }
   .section-day { font-size: 10px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); white-space: nowrap; }
+  .section.detour .section-day { color: var(--detour); }
   .section-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
   .section-note { font-size: 12px; color: var(--muted); font-style: italic; margin-left: auto; white-space: nowrap; }
+
+  /* MAP THUMBNAIL */
+  .section-map {
+    height: 170px;
+    width: 100%;
+    margin: 0 0 1px 0;
+    border: 1px solid var(--border);
+    border-top: none;
+    overflow: hidden;
+    position: relative;
+  }
+  .section-map .leaflet-control-attribution {
+    font-size: 8px !important;
+    padding: 1px 4px !important;
+    background: rgba(255,255,255,0.7) !important;
+  }
+  .section-map .leaflet-control-zoom { display: none !important; }
+  .section-map .leaflet-grab { cursor: default; }
 
   /* SUB-LABEL */
   .sub-label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin: 20px 0 6px; font-weight: 500; }
@@ -72,38 +75,11 @@
   /* GRID */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-top: 1px; }
 
-  /* CARD LINK WRAPPER */
-  a.card-link {
-    display: contents;
-    text-decoration: none;
-    color: inherit;
-  }
-
   /* CARD */
-  .card {
-    background: var(--paper);
-    padding: 20px 22px;
-    position: relative;
-    transition: background 0.15s, transform 0.1s;
-    cursor: pointer;
-    display: block;
-    text-decoration: none;
-    color: inherit;
-  }
+  .card { background: var(--paper); padding: 20px 22px; position: relative; transition: background 0.15s; cursor: pointer; display: block; text-decoration: none; color: inherit; }
   .card:hover { background: var(--cream); }
-  .card::after {
-    content: '↗';
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    font-size: 11px;
-    color: var(--muted);
-    opacity: 0;
-    transition: opacity 0.15s;
-    font-weight: 500;
-  }
+  .card::after { content: '↗'; position: absolute; top: 14px; right: 14px; font-size: 11px; color: var(--muted); opacity: 0; transition: opacity 0.15s; font-weight: 500; }
   .card:hover::after { opacity: 1; }
-
   .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; padding-right: 16px; }
   .card-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; line-height: 1.2; letter-spacing: -0.2px; }
   .card-badges { display: flex; gap: 4px; flex-shrink: 0; align-items: flex-start; flex-wrap: wrap; justify-content: flex-end; }
@@ -128,6 +104,10 @@
   .card.standout .badge-flag { background: rgba(255,255,255,0.15); color: var(--paper); }
   .card.standout::after { color: rgba(245,240,232,0.4); }
 
+  /* DETOUR section cards */
+  .section.detour .card.standout { background: var(--detour); }
+  .section.detour .card.standout:hover { background: #0f2e1a; }
+
   /* FOOTER */
   .footer { background: var(--ink); color: var(--paper); padding: 40px; margin-top: 80px; }
   .footer-inner { max-width: 900px; margin: 0 auto; }
@@ -141,6 +121,7 @@
     .header-meta { gap: 20px; }
     .grid { grid-template-columns: 1fr; }
     .section-note { display: none; }
+    .section-map { height: 140px; }
   }
 </style>
 </head>
@@ -152,7 +133,7 @@
     <h1>Where to<br><em>Eat</em> in Iceland</h1>
     <div class="header-sub">South Coast Road Trip · Reykjavík to Jökulsárlón and back · Click any card to open in Google Maps</div>
     <div class="header-meta">
-      <div class="meta-item"><span class="meta-label">Stops</span><span class="meta-val">68</span></div>
+      <div class="meta-item"><span class="meta-label">Stops</span><span class="meta-val">70</span></div>
       <div class="meta-item"><span class="meta-label">Min. Reviews</span><span class="meta-val">500</span></div>
       <div class="meta-item"><span class="meta-label">Min. Rating</span><span class="meta-val">4.0★</span></div>
       <div class="meta-item"><span class="meta-label">Max. per person</span><span class="meta-val">$50 CAD</span></div>
@@ -162,7 +143,6 @@
 
 <div class="criteria-bar">
   <div class="criteria-inner">
-    <div class="crit"><div class="crit-dot"></div>All prices include tax &amp; tip</div>
     <div class="crit"><div class="crit-dot"></div>$ = under ~$20 CAD · $$ = $20–50 CAD</div>
     <div class="crit"><div class="crit-dot"></div>Dark card = standout pick</div>
     <div class="crit"><div class="crit-dot"></div>⚑ = verify price or hours first</div>
@@ -172,12 +152,13 @@
 
 <main class="main">
 
-<!-- ═══════════════════════════════════════════════════ REYKJAVÍK -->
+<!-- ═══ REYKJAVÍK ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Days 1, 5, 6</span>
     <h2 class="section-title">Reykjavík</h2>
   </div>
+  <div class="section-map" id="map-reykjavik"></div>
 
   <div class="sub-label">Hot Dogs &amp; Street Food</div>
   <div class="grid">
@@ -252,12 +233,12 @@
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJqe67j80vgUMRchMvkyi1R7c" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Íslenski Barinn</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">4,795 reviews</span></div>
-      <div class="card-note">Traditional Icelandic bar. Reindeer hot dogs, whale, puffin, lamb shank. City centre. Open until 1am.</div>
+      <div class="card-note">Traditional Icelandic bar. Reindeer hot dogs, whale, puffin, lamb shank. Open until 1am.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJgZR8ncB11kgRn5KASPfHIkE" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Skál!</div><div class="card-badges"><span class="badge badge-price-2">$$</span><span class="badge badge-flag">⚑</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">1,100 reviews</span></div>
-      <div class="card-note">Elevated Icelandic small plates. Confirm price at door — can push toward $50 limit.</div>
+      <div class="card-note">Elevated Icelandic small plates. Confirm price at door.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJZZ057KUL1kgRXxy_yvHunZs" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Fjallkonan</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -272,12 +253,12 @@
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJCRdisMx01kgRUCG-12-_bE0" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Café Loki</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.5</span><span class="card-reviews">6,427 reviews</span></div>
-      <div class="card-note">Traditional Icelandic. Lamb, fish, rye bread ice cream. Next to Hallgrímskirkja. Opens 8am.</div>
+      <div class="card-note">Traditional Icelandic. Lamb, fish, rye bread ice cream. Hallgrímskirkja. Opens 8am.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJtZgHhSwL1kgRHK5Hp4cipEk" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Seabaron (Sægreifinn)</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.5</span><span class="card-reviews">4,594 reviews</span></div>
-      <div class="card-note">Harbour shack. Lobster soup and grilled fish skewers. Simple menu, iconic. Near your hotel.</div>
+      <div class="card-note">Harbour shack. Lobster soup and grilled fish skewers. Near your hotel.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJ0wZIeVF11kgRgoGq79olLW4" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">101 Reykjavík Street Food</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
@@ -320,12 +301,12 @@
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJLdjXhiwL1kgRpMNJJWe1QmY" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Hamborgarabúlla Tómasar</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">1,119 reviews</span></div>
-      <div class="card-note">Tommi's Burger Joint. Harbour area. Icelandic institution. Simple and great.</div>
+      <div class="card-note">Tommi's Burger Joint. Harbour area. Icelandic institution.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJ0wgn0GN11kgRtuLPZyntzPI" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Lóa Restaurant</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">806 reviews</span></div>
-      <div class="card-note">Cod, lamb, pasta. Laugavegur. Reviews flag good value. Dinner only from 4pm.</div>
+      <div class="card-note">Cod, lamb, pasta. Laugavegur. Good value. Dinner only from 4pm.</div>
     </a>
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJLYld_zR11kgRqjJJ7Gv1ngE" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Bastard Brew &amp; Food</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -378,7 +359,7 @@
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJv4rz8iwL1kgR47aOgr9LcM4" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Ramen Momo</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.5</span><span class="card-reviews">1,321 reviews</span></div>
-      <div class="card-note">First ramen restaurant in Iceland. City centre. Very affordable. Closed Mon &amp; Thu.</div>
+      <div class="card-note">First ramen restaurant in Iceland. Very affordable. Closed Mon &amp; Thu.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJZ_DaScl01kgRskzbBvIUexU" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Mai Thai Bistro</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
@@ -397,7 +378,7 @@
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJ1S66qysL1kgRrgOQHWST1uw" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Valdís</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.5</span><span class="card-reviews">923 reviews</span></div>
-      <div class="card-note">Right at Grandi harbour — 2 min from your hotel. Try rye bread or salted licorice. Seriously.</div>
+      <div class="card-note">Right at Grandi harbour — 2 min from your hotel. Try rye bread or salted licorice.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJ4-hM6rsL1kgROYXKvPjrgSg" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Gaeta Gelato</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
@@ -412,23 +393,24 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ GOLDEN CIRCLE -->
+<!-- ═══ GOLDEN CIRCLE ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 2</span>
     <h2 class="section-title">Golden Circle</h2>
     <span class="section-note">Þingvellir → Geysir → Gullfoss → Kerið</span>
   </div>
+  <div class="section-map" id="map-golden"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJu_eD4_uW1kgRr5VyF_fx5t4" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Friðheimar</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">5,210 reviews</span></div>
-      <div class="card-note">Lunch in a working greenhouse tomato farm between Þingvellir and Geysir. All-you-can-eat tomato soup. Book ahead.</div>
+      <div class="card-note">Lunch in a working greenhouse tomato farm. All-you-can-eat tomato soup. Book ahead. Lunch only.</div>
     </a>
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJq_avi-qZ1kgRQjUnszqbNyc" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Efstidalur II</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">2,370 reviews</span></div>
-      <div class="card-note">Working dairy farm near Laugarvatn. Burgers and ice cream from their own cows. You watch them eat while you eat.</div>
+      <div class="card-note">Working dairy farm. Burgers and ice cream from their own cows. You watch them while you eat.</div>
     </a>
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJPU9xDL-a1kgRHcRTFNPRxUA" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Lindin</div><div class="card-badges"><span class="badge badge-price-2">$$</span><span class="badge badge-flag">⚑</span></div></div>
@@ -438,12 +420,35 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ HVOLSVÖLLUR -->
+<!-- ═══ FLÚÐIR DETOUR ═══ -->
+<section class="section detour">
+  <div class="section-header">
+    <span class="section-day">Day 2 — Detour</span>
+    <h2 class="section-title">Flúðir</h2>
+    <span class="section-note">~20km off Route 1 · Near Secret Lagoon</span>
+  </div>
+  <div class="section-map" id="map-fludir"></div>
+  <div class="grid">
+    <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJKbfCDPCV1kgRVuaevlkqW0U" target="_blank" rel="noopener">
+      <div class="card-top"><div class="card-name">Farmers Bistro</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
+      <div class="card-meta"><span class="card-stars">★ 4.7</span><span class="card-reviews">730 reviews</span></div>
+      <div class="card-note">Iceland's only commercial mushroom farm. All-mushroom menu — soup buffet is exceptional. Try the mushroom ice cream. Closes 5pm.</div>
+    </a>
+    <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJnSnRyZKV1kgRifO_3kXmcmo" target="_blank" rel="noopener">
+      <div class="card-top"><div class="card-name">Restaurant Minilik</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
+      <div class="card-meta"><span class="card-stars">★ 4.6</span><span class="card-reviews">515 reviews</span></div>
+      <div class="card-note">Authentic Ethiopian in a tiny Icelandic village. Genuinely surprising. Call ahead — small operation. Closed Mondays.</div>
+    </a>
+  </div>
+</section>
+
+<!-- ═══ HVOLSVÖLLUR ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 2 — Dinner</span>
     <h2 class="section-title">Hvolsvöllur</h2>
   </div>
+  <div class="section-map" id="map-hvol"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJ_5kB35_j1kgRpyQOYQrS4_c" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Eldstó Art Cafe</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -458,12 +463,13 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ CORRIDOR -->
+<!-- ═══ CORRIDOR ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 3 — En Route</span>
     <h2 class="section-title">Hvolsvöllur → Skógafoss Corridor</h2>
   </div>
+  <div class="section-map" id="map-corridor"></div>
   <div class="grid">
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJ9zWPZ-Xk1kgRym1Be42iwJI" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Hygge Restaurant &amp; Bar</div><div class="card-badges"><span class="badge badge-price-2">$$</span><span class="badge badge-flag">⚑</span></div></div>
@@ -478,12 +484,13 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ SKÓGAFOSS -->
+<!-- ═══ SKÓGAFOSS ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 3</span>
     <h2 class="section-title">Skógafoss</h2>
   </div>
+  <div class="section-map" id="map-skogafoss"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJ9X0AOFHl1kgRToU1d3clr7k" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Mia's Country Van</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -498,17 +505,18 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ VÍK -->
+<!-- ═══ VÍK ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 3 — Lunch</span>
     <h2 class="section-title">Vík</h2>
   </div>
+  <div class="section-map" id="map-vik"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJ3y4pGslL10gRpvZ4cMJBFSA" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">SKOOL BEANS</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.9</span><span class="card-reviews">1,671 reviews</span></div>
-      <div class="card-note">Coffee bus. Unique hot chocolates, pastries. The vibe is unmatched. Closed Mon–Tue. Open 9am.</div>
+      <div class="card-note">Coffee bus. Unique hot chocolates, pastries. The vibe is unmatched. Closed Mon–Tue. Opens 9am.</div>
     </a>
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJhaOKGjZL10gRxhoKOs0D5Lo" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Black Crust Pizzeria</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -548,17 +556,18 @@
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJtylDm0hK10gRgDGJh0Jgk1g" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Ice Cave Bistro</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.0</span><span class="card-reviews">623 reviews</span></div>
-      <div class="card-note">Meets criteria at the floor. Lamb stew decent. Use if others are packed.</div>
+      <div class="card-note">Meets criteria at the floor. Lamb stew decent. Option if others are packed.</div>
     </a>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ REYNISFJARA -->
+<!-- ═══ REYNISFJARA ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 3</span>
     <h2 class="section-title">Reynisfjara Beach</h2>
   </div>
+  <div class="section-map" id="map-reynis"></div>
   <div class="grid">
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJZxmuoIBJ10gRKHJ7DRSA5kI" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Black Beach Restaurant</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -568,12 +577,13 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ KLAUSTUR -->
+<!-- ═══ KIRKJUBÆJARKLAUSTUR ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 3 — Overnight</span>
     <h2 class="section-title">Kirkjubæjarklaustur</h2>
   </div>
+  <div class="section-map" id="map-klaustur"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJjT0lVEXl0EgR2E-HTvkUs3A" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Systrakaffi</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -583,13 +593,14 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ GLACIER CORRIDOR -->
+<!-- ═══ GLACIER CORRIDOR ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 4 — En Route</span>
     <h2 class="section-title">Glacier Corridor</h2>
     <span class="section-note">Kirkjubæjarklaustur → Jökulsárlón</span>
   </div>
+  <div class="section-map" id="map-glacier"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJfwoXv0c70EgR9XMw8L6E9EI" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Café Vatnajökull</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
@@ -599,17 +610,18 @@
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJkUjZSuo20EgRVws0p_7xdzU" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Freysnes</div><div class="card-badges"><span class="badge badge-price-1">$</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.2</span><span class="card-reviews">1,100 reviews</span></div>
-      <div class="card-note">Gas station near Svínafellsjökull. Sounds bad, is genuinely good. Fresh burgers, cod. Cheapest hot food on the east stretch.</div>
+      <div class="card-note">Gas station near Svínafellsjökull. Genuinely good. Fresh burgers, cod. Cheapest hot food on the east stretch.</div>
     </a>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ SELFOSS -->
+<!-- ═══ SELFOSS ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 4 — Dinner</span>
     <h2 class="section-title">Selfoss</h2>
   </div>
+  <div class="section-map" id="map-selfoss"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJpdvSDpBf1kgRd0vkcj27rlg" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">The Old Dairy Food Hall</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -624,18 +636,19 @@
     <a class="card" href="https://www.google.com/maps/place/?q=place_id:ChIJ8Rn47eZg1kgRoeCt0gT976s" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Ingólfsskáli Viking Restaurant</div><div class="card-badges"><span class="badge badge-price-2">$$</span><span class="badge badge-flag">⚑</span></div></div>
       <div class="card-meta"><span class="card-stars">★ 4.6</span><span class="card-reviews">764 reviews</span></div>
-      <div class="card-note">Viking hall dining. Lamb, horse, mead served in horns. Dinner only. Confirm price — some dishes push limit.</div>
+      <div class="card-note">Viking hall dining. Lamb, horse, mead served in horns. Dinner only. Confirm price before committing.</div>
     </a>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════ HVERAGERÐI -->
+<!-- ═══ HVERAGERÐI ═══ -->
 <section class="section">
   <div class="section-header">
     <span class="section-day">Day 4/5 — Route Back</span>
     <h2 class="section-title">Hveragerði</h2>
     <span class="section-note">Between Selfoss &amp; Reykjavík</span>
   </div>
+  <div class="section-map" id="map-hveragerdi"></div>
   <div class="grid">
     <a class="card standout" href="https://www.google.com/maps/place/?q=place_id:ChIJnUP5Bclm1kgR9z9ZXpqyLqE" target="_blank" rel="noopener">
       <div class="card-top"><div class="card-name">Ölverk Pizza &amp; Brewery</div><div class="card-badges"><span class="badge badge-price-2">$$</span></div></div>
@@ -653,14 +666,113 @@
     <div class="legend">
       <div class="legend-item"><span class="badge badge-price-1" style="background:rgba(46,125,50,0.3);color:#a5d6a7;">$</span> Under ~$20 CAD/person</div>
       <div class="legend-item"><span class="badge badge-price-2" style="background:rgba(230,81,0,0.3);color:#ffcc80;">$$</span> $20–50 CAD/person</div>
-      <div class="legend-item"><span class="badge badge-flag">⚑</span> Verify price or hours before going</div>
+      <div class="legend-item"><span class="badge badge-flag">⚑</span> Verify price or hours</div>
       <div class="legend-item"><span style="width:20px;height:14px;background:#1a1614;display:inline-block;border-radius:2px;"></span> Standout pick</div>
+      <div class="legend-item"><span style="width:20px;height:14px;background:#1a4a2e;display:inline-block;border-radius:2px;"></span> Detour section</div>
     </div>
     <div class="footer-note">
-      All establishments meet: 500+ Google Maps reviews · 4.0+ stars · Under $50 CAD/person · Verified along the April 8–13 route. Clicking a card opens Google Maps where you can find the website, hours, phone number, and directions. Sorted by star rating within each group, then by review count as tiebreaker. Prices are estimated — Iceland can be unpredictable. Hygge Restaurant and Ingólfsskáli flagged for price verification. Lindin requires a slight detour from the Golden Circle route.
+      All establishments meet: 500+ Google Maps reviews · 4.0+ stars · Under $50 CAD/person · Verified along the April 8–13 route. Clicking a card opens Google Maps. Sorted by star rating within each group, then by review count as tiebreaker. Flúðir is a ~20km detour off Route 1 near the Secret Lagoon — accessible on Day 2 Golden Circle loop. Map tiles © OpenStreetMap contributors.
     </div>
   </div>
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // Full route polyline (outbound + return)
+  var R = [
+    [64.152,-21.945], // Reykjavík
+    [64.250,-21.128], // Þingvellir
+    [64.177,-20.445], // Friðheimar/Reykholt area
+    [64.242,-20.552], // Efstidalur
+    [64.215,-20.731], // Laugarvatn
+    [64.313,-20.302], // Geysir
+    [64.327,-20.120], // Gullfoss
+    [64.040,-20.886], // Kerið
+    [63.752,-20.228], // Hvolsvöllur
+    [63.724,-20.038], // Hellishólar
+    [63.616,-19.989], // Seljalandsfoss area
+    [63.543,-19.668], // Faxi Bakery
+    [63.532,-19.511], // Skógafoss
+    [63.525,-19.358], // Sólheimajökull
+    [63.406,-19.124], // Dyrhólaey
+    [63.403,-19.044], // Reynisfjara
+    [63.419,-19.009], // Vík
+    [63.432,-18.700],
+    [63.530,-18.420],
+    [63.769,-18.172], // Fjaðrárgljúfur
+    [63.790,-18.053], // Kirkjubæjarklaustur
+    [63.820,-17.500],
+    [63.870,-17.000],
+    [63.985,-16.892], // Freysnes/Svínafell
+    [64.017,-16.966], // Skaftafell
+    [64.016,-16.500],
+    [64.016,-16.366], // Fjallsárlón
+    [64.048,-16.179], // Jökulsárlón
+    [64.042,-16.155], // Diamond Beach
+    // Return west
+    [64.048,-16.179],
+    [63.870,-17.000],
+    [63.790,-18.053],
+    [63.432,-18.700],
+    [63.419,-19.009], // Vík
+    [63.752,-20.228], // Hvolsvöllur
+    [63.870,-20.544],
+    [63.937,-21.000], // Selfoss
+    [64.000,-21.190], // Hveragerði
+    [64.145,-21.942]  // Reykjavík
+  ];
+
+  var STYLE = { color: '#c0392b', weight: 3, opacity: 0.85 };
+
+  function makeMap(id, center, zoom, pts) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var m = L.map(id, {
+      center: center, zoom: zoom,
+      zoomControl: false,
+      scrollWheelZoom: false,
+      dragging: false,
+      touchZoom: false,
+      doubleClickZoom: false,
+      keyboard: false,
+      attributionControl: true
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://openstreetmap.org/copyright">OSM</a>',
+      maxZoom: 19
+    }).addTo(m);
+    if (pts && pts.length > 1) {
+      L.polyline(pts, STYLE).addTo(m);
+    }
+    return m;
+  }
+
+  // Flúðir detour path
+  var fludirRoute = [
+    [64.040,-20.886], // Kerið
+    [64.060,-20.750],
+    [64.100,-20.550],
+    [64.130,-20.320], // Flúðir
+    [64.143,-20.322]
+  ];
+
+  // Section maps
+  makeMap('map-reykjavik', [64.148,-21.938], 13, R.slice(0,3));
+  makeMap('map-golden',    [64.100,-20.640],  9, R.slice(0,9));
+  makeMap('map-fludir',    [64.095,-20.600], 10, fludirRoute);
+  makeMap('map-hvol',      [63.750,-20.230], 12, R.slice(7,11));
+  makeMap('map-corridor',  [63.600,-19.800], 10, R.slice(8,13));
+  makeMap('map-skogafoss', [63.530,-19.510], 13, R.slice(11,14));
+  makeMap('map-vik',       [63.418,-19.010], 12, R.slice(13,17));
+  makeMap('map-reynis',    [63.406,-19.050], 13, R.slice(14,17));
+  makeMap('map-klaustur',  [63.793,-18.060], 12, R.slice(16,21));
+  makeMap('map-glacier',   [63.920,-17.100],  8, R.slice(20,29));
+  makeMap('map-selfoss',   [63.940,-21.000], 12, R.slice(34,38));
+  makeMap('map-hveragerdi',[64.000,-21.190], 13, R.slice(35,39));
+
+});
+</script>
 </body>
 </html>
